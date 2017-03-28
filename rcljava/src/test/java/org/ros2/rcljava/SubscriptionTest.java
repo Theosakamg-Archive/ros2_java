@@ -1,4 +1,5 @@
 /* Copyright 2016 Esteve Fernandez <esteve@apache.org>
+ * Copyright 2016-2017 Mickael Gaillard <mick.gaillard@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,23 +19,41 @@ package org.ros2.rcljava;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+import org.apache.log4j.BasicConfigurator;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.ros2.rcljava.node.NativeNode;
+import org.ros2.rcljava.node.topic.SubscriptionCallback;
+
+import std_msgs.msg.String;
+
+import org.ros2.rcljava.node.topic.NativeSubscription;
 
 public class SubscriptionTest {
 
-  @Test
-  public final void testCreate() {
-    RCLJava.rclJavaInit();
-    Node node = RCLJava.createNode("test_node");
-    Subscription<std_msgs.msg.String> subscription = node
-        .<std_msgs.msg.String>createSubscription(std_msgs.msg.String.class,
-        "test_topic", new Consumer<std_msgs.msg.String>() {
-          public void accept(final std_msgs.msg.String msg) {
-          }
-        }
-    );
-    assertEquals(node.getNodeHandle(), subscription.getNodeHandle());
-    assertNotEquals(0, subscription.getNodeHandle());
-    assertNotEquals(0, subscription.getSubscriptionHandle());
-  }
+    @BeforeClass
+    public static void beforeClass() {
+        BasicConfigurator.resetConfiguration();
+        BasicConfigurator.configure();
+    }
+
+    @Test
+    public final void testCreate() {
+        RCLJava.rclJavaInit();
+        NativeNode node = (NativeNode) RCLJava.createNode("test_node");
+        NativeSubscription<std_msgs.msg.String> subscription =
+                (NativeSubscription<String>) node.<std_msgs.msg.String>createSubscription(
+            std_msgs.msg.String.class, "test_topic", new SubscriptionCallback<std_msgs.msg.String>() {
+                public void dispatch(final std_msgs.msg.String msg) {
+                }
+            });
+
+        assertEquals(node.getNodeHandle(), subscription.getNode().getNodeHandle());
+        assertNotEquals(0, subscription.getNode().getNodeHandle());
+        assertNotEquals(0, subscription.getSubscriptionHandle());
+
+        subscription.dispose();
+        node.dispose();
+        RCLJava.shutdown();
+    }
 }

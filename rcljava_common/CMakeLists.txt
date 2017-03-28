@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 
 project(rcljava_common)
 
@@ -27,6 +27,8 @@ set(CMAKE_JAVA_COMPILE_FLAGS "-source" "1.6" "-target" "1.6")
 
 set(${PROJECT_NAME}_java_sources
   "src/main/java/org/ros2/rcljava/common/RCLJavaProxy.java"
+  "src/main/java/org/ros2/rcljava/internal/message/Message.java"
+  "src/main/java/org/ros2/rcljava/internal/service/Service.java"
 )
 
 set(${PROJECT_NAME}_cpp_sources
@@ -41,6 +43,7 @@ add_jar("${PROJECT_NAME}_jar"
 
 install_jar("${PROJECT_NAME}_jar" "share/${PROJECT_NAME}/java")
 ament_export_jars("share/${PROJECT_NAME}/java/${PROJECT_NAME}.jar")
+ament_java_package_hook(${PROJECT_NAME})
 
 find_jar(SFL4J_JAR NAMES slf4j-api)
 if(${SFL4J_JAR})
