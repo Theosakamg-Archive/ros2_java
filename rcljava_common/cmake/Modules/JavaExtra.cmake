@@ -40,16 +40,14 @@ function(add_junit_tests TARGET_NAME)
     set(SEPARATOR ":")
   endif()
 
-  set(exported_jars "")
-
   find_jar(JUNIT_JAR NAMES junit4)
   if(${JUNIT_JAR})
-    list(APPEND exported_jars ${JUNIT_JAR})
+    ament_export_jars(${JUNIT_JAR})
     set(${TARGET_NAME}_jar_dependencies "${JUNIT_JAR}")
   else()
     find_jar(JUNIT_JAR NAMES junit VERSIONS 4)
     if(${JUNIT_JAR})
-      list(APPEND exported_jars ${JUNIT_JAR})
+      ament_export_jars(${JUNIT_JAR})
     else()
       set(junit_version "4.12")
 
@@ -66,7 +64,7 @@ function(add_junit_tests TARGET_NAME)
         DESTINATION
         "share/${PROJECT_NAME}/java")
 
-      list(APPEND exported_jars "share/${PROJECT_NAME}/java/junit-${junit_version}.jar")
+      ament_export_jars("share/${PROJECT_NAME}/java/junit-${junit_version}.jar")
 
       set(JUNIT_JAR "${junit_jar_path}")
     endif()
@@ -74,7 +72,7 @@ function(add_junit_tests TARGET_NAME)
 
   find_jar(HAMCREST_JAR NAMES hamcrest-all)
   if(${HAMCREST_JAR})
-    list(APPEND exported_jars ${HAMCREST_JAR})
+    ament_export_jars(${HAMCREST_JAR})
   else()
     set(hamcrest_version "1.3")
 
@@ -91,12 +89,10 @@ function(add_junit_tests TARGET_NAME)
       DESTINATION
       "share/${PROJECT_NAME}/java")
 
-    list(APPEND exported_jars "share/${PROJECT_NAME}/java/hamcrest-all-${hamcrest_version}.jar")
+    ament_export_jars("share/${PROJECT_NAME}/java/hamcrest-all-${hamcrest_version}.jar")
 
     set(HAMCREST_JAR "${hamcrest_jar_path}")
   endif()
-
-  ament_export_jars(${exported_jars})
 
   set(${TARGET_NAME}_jar_dependencies "${JUNIT_JAR}${SEPARATOR}${HAMCREST_JAR}")
 

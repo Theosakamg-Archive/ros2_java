@@ -1,4 +1,4 @@
-/* Copyright 2016 Esteve Fernandez <esteve@apache.org>
+/* Copyright 2016-2017 Mickael Gaillard <mick.gaillard@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,101 +12,240 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.ros2.rcljava.node;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Queue;
 
-import org.ros2.rcljava.client.Client;
-import org.ros2.rcljava.consumers.Consumer;
-import org.ros2.rcljava.consumers.TriConsumer;
 import org.ros2.rcljava.qos.QoSProfile;
-import org.ros2.rcljava.interfaces.Disposable;
-import org.ros2.rcljava.interfaces.MessageDefinition;
-import org.ros2.rcljava.interfaces.ServiceDefinition;
-import org.ros2.rcljava.publisher.Publisher;
-import org.ros2.rcljava.service.RMWRequestId;
-import org.ros2.rcljava.service.Service;
-import org.ros2.rcljava.subscription.Subscription;
+
+import builtin_interfaces.msg.Time;
+
+import org.ros2.rcljava.Log;
+import org.ros2.rcljava.node.parameter.ParameterVariant;
+import org.ros2.rcljava.node.service.Client;
+import org.ros2.rcljava.node.service.Service;
+import org.ros2.rcljava.node.service.ServiceCallback;
+import org.ros2.rcljava.node.topic.SubscriptionCallback;
+import org.ros2.rcljava.node.topic.Publisher;
+import org.ros2.rcljava.node.topic.Subscription;
+
+import rcl_interfaces.msg.SetParametersResult;
 
 /**
- * This class serves as a bridge between ROS2's rcl_node_t and RCLJava.
- * A Node must be created via @{link RCLJava#createNode(String)}
+ * ROS2 Client API.
+ *
  */
-public interface Node extends Disposable {
-  /**
-   * return All the @{link Client}s that have been created by this instance.
-   */
-  Collection<Client> getClients();
+public interface Node {
 
-  /**
-   * return All the @{link Service}s that have been created by this instance.
-   */
-  Collection<Service> getServices();
+    /**
+     * Release all ressource.
+     */
+    void dispose();
 
-  /**
-   * @return All the @{link Subscription}s that were created by this instance.
-   */
-  Collection<Subscription> getSubscriptions();
+    /**
+     * Get the name of the node.
+     *
+     * @return The name of the node.
+     */
+    String getName();
 
-  /**
-   * @return All the @{link Publisher}s that were created by this instance.
-   */
-  Collection<Publisher> getPublishers();
+    /**
+     * Create and return a Publisher.
+     *
+     * @param <T> Message definition.
+     * @param message Message class.
+     * @param topic The topic for this publisher to publish on.
+     * @param qos The quality of service profile to pass on to the rmw implementation.
+     * @return Publisher instance of the created publisher.
+     */
+    <T extends org.ros2.rcljava.internal.message.Message> Publisher<T> createPublisher(Class<T> message, String topic, QoSProfile qos);
 
-  /**
-   * Create a Subscription&lt;T&gt;.
-   *
-   * @param <T> The type of the messages that will be received by the
-   *     created @{link Subscription}.
-   * @param messageType The class of the messages that will be received by the
-   *     created @{link Subscription}.
-   * @param topic The topic from which the created @{link Subscription} will
-   *     receive messages.
-   * @param callback The callback function that will be triggered when a
-   *     message is received by the @{link Subscription}.
-   * @return A @{link Subscription} that represents the underlying ROS2
-   *     subscription structure.
-   */
-  <T extends MessageDefinition> Subscription<T> createSubscription(final Class<T> messageType,
-      final String topic, final Consumer<T> callback, final QoSProfile qosProfile);
+    /**
+     * Create and return a Publisher. (Retro-compatibility)
+     *
+     * @param <T> Message definition.
+     * @param message Message class.
+     * @param topic The topic for this publisher to publish on.
+     * @return Publisher instance of the created publisher.
+     */
+    <T extends org.ros2.rcljava.internal.message.Message> Publisher<T> createPublisher(Class<T> message, String topic);
 
-  <T extends MessageDefinition> Subscription<T> createSubscription(
-      final Class<T> messageType, final String topic, final Consumer<T> callback);
+    /**
+     * Create and return a Subscription.
+     *
+     * @param <T> Message definition.
+     * @param message Message Class
+     * @param topic The topic to subscribe on.
+     * @param callback The user-defined callback function.
+     * @param qos The quality of service profile to pass on to the rmw implementation.
+     * @return Subscription instance of the created subscription.
+     */
+    <T extends org.ros2.rcljava.internal.message.Message> Subscription<T> createSubscription(Class<T> message, String topic, SubscriptionCallback<T> callback, QoSProfile qos);
 
-  /**
-   * Create a Publisher&lt;T&gt;.
-   *
-   * @param <T> The type of the messages that will be published by the
-   *     created @{link Publisher}.
-   * @param messageType The class of the messages that will be published by the
-   *     created @{link Publisher}.
-   * @param topic The topic to which the created @{link Publisher} will
-   *     publish messages.
-   * @return A @{link Publisher} that represents the underlying ROS2 publisher
-   *     structure.
-   */
-  <T extends MessageDefinition> Publisher<T> createPublisher(
-      final Class<T> messageType, final String topic, final QoSProfile qosProfile);
+    /**
+     * Create and return a Subscription. (Retro-compatibility)
+     *
+     * @param <T> Message definition.
+     * @param message Message Class
+     * @param topic The topic to subscribe on.
+     * @param callback The user-defined callback function.
+     * @return Subscription instance of the created subscription.
+     */
+    <T extends org.ros2.rcljava.internal.message.Message> Subscription<T> createSubscription(Class<T> message, String topic, SubscriptionCallback<T> callback);
 
-  <T extends MessageDefinition> Publisher<T> createPublisher(
-      final Class<T> messageType, final String topic);
+    /**
+     * Create and return a Client.
+     *
+     * @param <T> Message definition.
+     * @param message Message Class
+     * @param service The service to subscribe on.
+     * @param qos The quality of service profile to pass on to the rmw implementation.
+     * @return Client instance of the service.
+     */
+    <T extends org.ros2.rcljava.internal.service.Service> Client<T> createClient(Class<T> message, String service, QoSProfile qos) throws Exception;
 
-  <T extends ServiceDefinition> Service<T> createService(final Class<T> serviceType,
-      final String serviceName,
-      final TriConsumer<RMWRequestId, ? extends MessageDefinition, ? extends MessageDefinition>
-          callback,
-      final QoSProfile qosProfile) throws NoSuchFieldException, IllegalAccessException;
+    /**
+     * Create and return a Client. (Retro-compatibility)
+     *
+     * @param <T> Message definition.
+     * @param message Message Class
+     * @param service The service to subscribe on.
+     * @return Client instance of the service.
+     */
+    <T extends org.ros2.rcljava.internal.service.Service> Client<T> createClient(Class<T> message, String service) throws Exception ;
 
-  <T extends ServiceDefinition> Service<T> createService(final Class<T> serviceType,
-      final String serviceName,
-      final TriConsumer<RMWRequestId, ? extends MessageDefinition, ? extends MessageDefinition>
-          callback) throws NoSuchFieldException, IllegalAccessException;
+    /**
+     * Create and return a Service.
+     *
+     * @param <T> Message definition.
+     * @param message Message Class
+     * @param service The service for this publisher to publish on.
+     * @param callback The user-defined callback function.
+     * @param qos The quality of service profile to pass on to the rmw implementation.
+     * @return Service instance of the service.
+     */
+    <T extends org.ros2.rcljava.internal.service.Service> Service<T> createService(final Class<T> serviceType,
+            final String serviceName,
+            final ServiceCallback<?, ?> callback,
+            final QoSProfile qos) throws Exception;
 
-  <T extends ServiceDefinition> Client<T> createClient(
-      final Class<T> serviceType, final String serviceName, final QoSProfile qosProfile)
-      throws NoSuchFieldException, IllegalAccessException;
+    /**
+     * Create and return a Service. (Retro-compatibility)
+     *
+     * @param <T> Message definition.
+     * @param message Message Class
+     * @param service The service for this publisher to publish on.
+     * @param callback The user-defined callback function.
+     * @return Service instance of the service.
+     */
+    <T extends org.ros2.rcljava.internal.service.Service> Service<T> createService(final Class<T> serviceType,
+            final String serviceName,
+            final ServiceCallback<?, ?> callback) throws Exception;
 
-  <T extends ServiceDefinition> Client<T> createClient(final Class<T> serviceType,
-      final String serviceName) throws NoSuchFieldException, IllegalAccessException;
+    List<SetParametersResult> setParameters(final List<ParameterVariant<?>> parameters);
+
+    SetParametersResult setParametersAtomically(final List<ParameterVariant<?>> parameters);
+
+    List<ParameterVariant<?>> getParameters(final List<String> names);
+
+    ParameterVariant<?> getParameter(final String name);
+
+    HashMap<String, String> getTopicNamesAndTypes();
+
+    List<String> getNodeNames();
+
+    int countPublishers(final String topic);
+
+    int countSubscribers(final String topic);
+
+    /**
+     * Return the rcl_node_t node handle (non-const version).
+     * @return
+     */
+    long getNodeHandle();
+
+    /**
+     * Notify threads waiting on graph changes.
+     *
+     * Affects threads waiting on the notify guard condition, see:
+     * get_notify_guard_condition(), as well as the threads waiting on graph
+     * changes using a graph Event, see: wait_for_graph_change().
+     *
+     * This is typically only used by the rclcpp::graph_listener::GraphListener.
+     *
+     * \throws RCLBaseError (a child of that exception) when an rcl error occurs
+     */
+    void notifyGraphChange();
+
+    /** Notify any and all blocking node actions that shutdown has occurred. */
+    void notifyShutdown();
+
+    /**
+     * Return a graph event, which will be set anytime a graph change occurs.
+     *
+     * The graph Event object is a loan which must be returned.
+     * The Event object is scoped and therefore to return the load just let it go
+     * out of scope.
+     */
+    Object getGraphEvent();
+
+    /**
+     * Wait for a graph event to occur by waiting on an Event to become set.
+     *
+     * The given Event must be acquire through the get_graph_event() method.
+     *
+     * \throws InvalidEventError if the given event is nullptr
+     * \throws EventNotRegisteredError if the given event was not acquired with
+     *   get_graph_event().
+     */
+    void waitForGraphChange(Object event, int timeout);
+
+    /**
+     * This is typically only used by the rclcpp::graph_listener::GraphListener.
+     * Return the number of on loan graph events, see get_graph_event().
+     */
+    int countGraphUsers();
+
+    /**
+     * Register the callback for parameter changes.
+     * Repeated invocations of this function will overwrite previous callbacks
+     *
+     * @param User defined callback function, It is expected to atomically set parameters.
+     */
+    <T extends org.ros2.rcljava.internal.message.Message> void registerParamChangeCallback(SubscriptionCallback<T> callback);
+
+    String getNameSpace();
+
+    Collection<Byte> getParametersTypes(List<String> names);
+
+    Collection<String> getParametersNames();
+
+    /**
+     * @return All the @{link Subscription}s that were created by this instance.
+     */
+    Queue<Subscription<? extends org.ros2.rcljava.internal.message.Message>> getSubscriptions();
+
+    /**
+     * @return All the @{link Publisher}s that were created by this instance.
+     */
+    Queue<Publisher<? extends org.ros2.rcljava.internal.message.Message>> getPublishers();
+
+    /**
+     * Get list of Clients.
+     * @return ArrayList of Clients
+     */
+    Queue<Client<? extends org.ros2.rcljava.internal.service.Service>> getClients();
+
+    /**
+     * Get list of Services.
+     * @return ArrayList of Services
+     */
+    Queue<Service<? extends org.ros2.rcljava.internal.service.Service>> getServices();
+
+    Log getLog();
+
+    Time getCurrentTime();
 }

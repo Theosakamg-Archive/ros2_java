@@ -20,27 +20,34 @@ endif()
 include(UseJava)
 
 if(NOT WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra")
 endif()
 
 set(CMAKE_JAVA_COMPILE_FLAGS "-source" "1.6" "-target" "1.6")
 
 set(${PROJECT_NAME}_java_sources
-  "src/main/java/org/ros2/rcljava/common/JNIUtils.java"
   "src/main/java/org/ros2/rcljava/common/RCLJavaProxy.java"
-  "src/main/java/org/ros2/rcljava/interfaces/Disposable.java"
-  "src/main/java/org/ros2/rcljava/interfaces/MessageDefinition.java"
-  "src/main/java/org/ros2/rcljava/interfaces/ServiceDefinition.java"
+  "src/main/java/org/ros2/rcljava/internal/message/Message.java"
+  "src/main/java/org/ros2/rcljava/internal/service/Service.java"
 )
 
 set(${PROJECT_NAME}_cpp_sources
   "src/main/cpp/rcljava_common.cpp"
 )
 
+add_jar("${PROJECT_NAME}_jar"
+  "${${PROJECT_NAME}_java_sources}"
+  OUTPUT_NAME
+  "${PROJECT_NAME}"
+)
+
+install_jar("${PROJECT_NAME}_jar" "share/${PROJECT_NAME}/java")
+ament_export_jars("share/${PROJECT_NAME}/java/${PROJECT_NAME}.jar")
+ament_java_package_hook(${PROJECT_NAME})
+
 find_jar(SFL4J_JAR NAMES slf4j-api)
-set(${PROJECT_NAME}_exported_jars "")
 if(${SFL4J_JAR})
-  list(APPEND ${PROJECT_NAME}_exported_jars ${SFL4J_JAR})
+  ament_export_jars(${SFL4J_JAR})
 else()
   set(slf4j_version "1.7.21")
   set(slf4j_api_sha256 "1d5aeb6bd98b0fdd151269eae941c05f6468a791ea0f1e68d8e7fe518af3e7df")
@@ -53,8 +60,7 @@ else()
     DESTINATION
     "share/${PROJECT_NAME}/java")
 
-  set(SFL4J_JAR "${slf4j_api_jar_path}")
-  list(APPEND ${PROJECT_NAME}_exported_jars "share/${PROJECT_NAME}/java/slf4j-api-${slf4j_version}.jar")
+  ament_export_jars("share/${PROJECT_NAME}/java/slf4j-api-${slf4j_version}.jar")
 
   if(ANDROID)
     set(slf4j_android_sha256 "3874b0975f9ad283328c0371ccde2de353754da33fda36e611702623ee1e5a95")
@@ -68,7 +74,7 @@ else()
       DESTINATION
       "share/${PROJECT_NAME}/java")
 
-    list(APPEND ${PROJECT_NAME}_exported_jars "share/${PROJECT_NAME}/java/slf4j-android-${slf4j_version}.jar")
+    ament_export_jars("share/${PROJECT_NAME}/java/slf4j-android-${slf4j_version}.jar")
   else()
     set(log4j_version "1.2.17")
 
@@ -98,24 +104,11 @@ else()
       DESTINATION
       "share/${PROJECT_NAME}/java")
 
-    list(APPEND ${PROJECT_NAME}_exported_jars "share/${PROJECT_NAME}/java/log4j-${log4j_version}.jar")
-    list(APPEND ${PROJECT_NAME}_exported_jars "share/${PROJECT_NAME}/java/slf4j-log4j12-${slf4j_version}.jar")
-    list(APPEND ${PROJECT_NAME}_exported_jars "share/${PROJECT_NAME}/java/slf4j-jdk14-${slf4j_version}.jar")
+    ament_export_jars("share/${PROJECT_NAME}/java/log4j-${log4j_version}.jar")
+    ament_export_jars("share/${PROJECT_NAME}/java/slf4j-log4j12-${slf4j_version}.jar")
+    ament_export_jars("share/${PROJECT_NAME}/java/slf4j-jdk14-${slf4j_version}.jar")
   endif()
 endif()
-
-add_jar("${PROJECT_NAME}_jar"
-  "${${PROJECT_NAME}_java_sources}"
-  OUTPUT_NAME
-  "${PROJECT_NAME}"
-  INCLUDE_JARS
-  "${SFL4J_JAR}"
-)
-
-install_jar("${PROJECT_NAME}_jar" "share/${PROJECT_NAME}/java")
-list(APPEND ${PROJECT_NAME}_exported_jars "share/${PROJECT_NAME}/java/${PROJECT_NAME}.jar")
-
-ament_export_jars(${${PROJECT_NAME}_exported_jars})
 
 include_directories(include)
 
